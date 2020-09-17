@@ -1,0 +1,157 @@
+<body>
+
+    <section id="colours">
+        <h4>
+            Here are a selection of colours. Toggle them with your arrow keys.<br>Click a pixel to change its colour.
+            500 ms cooldown.
+        </h4>
+    </section>
+</body>
+
+<style>
+    html,
+    body {
+        padding: 0;
+        margin: 0;
+    }
+
+    h4 {
+        margin: 0px;
+        padding: 0px;
+    }
+
+    section {
+        position: fixed;
+        padding: 25px;
+        background-color: rgba(13, 63, 63, 0.4);
+        text-align: center;
+        margin: auto;
+        margin: auto;
+
+        z-index: 1000;
+    }
+
+    .colour {
+        width: 50px;
+        height: 50px;
+        display: inline-block;
+    }
+
+    .selected {
+        width: 40px;
+        height: 40px;
+        border: solid 5px black;
+    }
+</style>
+
+<script src="https://cdn.jsdelivr.net/npm/p5@1.1.9/lib/p5.js"></script>
+
+<script>
+    let uri = 'wss://2.123.23.58:8080';
+    const socket = new WebSocket(uri);
+
+    let width = 420;
+    let height = 420;
+
+    let bitMap = [];
+
+    let colours = [];
+    colours.push([0, 0, 0]);
+    colours.push([0, 0, 255]);
+    colours.push([0, 255, 0]);
+    colours.push([0, 255, 255]);
+    colours.push([255, 0, 0]);
+    colours.push([255, 0, 255]);
+    colours.push([255, 255, 0]);
+    colours.push([255, 255, 255]);
+
+    for (let c of colours) {
+        let holder = document.createElement('div');
+        holder.id = colours.indexOf(c).toString();
+        holder.className = "colour";
+        holder.style = `background-color: rgba(${c[0]}, ${c[1]}, ${c[2]}, 0.5);`
+        document.getElementById('colours').appendChild(holder);
+    }
+
+    currentColour = 0;
+    colourSelect(currentColour);
+
+    socket.addEventListener('message', function (event) {
+        msg = JSON.parse(event.data);
+
+        if (msg.identifier == 100) {
+            bitMap = msg.bitMap;
+
+            let y = 0;
+            for (let row of bitMap) {
+                let x = 0;
+                for (let cell of row) {
+                    noStroke();
+                    fill(cell);
+                    rect(x * 25, y * 25, 25, 25);
+                    x++;
+                }
+                y++;
+            }
+        }
+
+        if (msg.identifier == 200) {
+            noStroke();
+            fill(msg.r, msg.g, msg.b);
+            rect(msg.x * 25, msg.y * 25, 25, 25);
+        }
+    })
+
+    function colourSelect(z) {
+        for (let c of document.getElementsByClassName('colour')) {
+            c.className = "colour";
+        }
+
+        document.getElementById(z).className = "colour selected";
+    }
+
+    function setup() {
+        W = 420 * 25;
+        H = 420 * 25;
+        createCanvas(W, H);
+
+        background(255, 255, 0);
+
+        textAlign(CENTER)
+        textSize(72);
+        text("Loading", windowWidth / 2, windowHeight / 2);
+
+        frameRate(30)
+    }
+
+    function draw() {
+
+    }
+
+    function keyPressed() {
+        if (keyIsDown(RIGHT_ARROW)) {
+            currentColour = (currentColour + 1) % colours.length
+            colourSelect(currentColour);
+        }
+
+        if (keyIsDown(LEFT_ARROW)) {
+            currentColour--;
+            if (currentColour == -1) {
+                currentColour = colours.length - 1;
+            }
+            colourSelect(currentColour);
+        }
+    }
+
+    function mousePressed() {
+        socket.send(JSON.stringify({
+            "x": Math.floor(mouseX / 25),
+            "y": Math.floor(mouseY / 25),
+            "r": colours[currentColour][0],
+            "g": colours[currentColour][1],
+            "b": colours[currentColour][2]
+        }))
+        // fill(colours[currentColour]);
+        // rect(Math.floor(mouseX / 25) * 25, Math.floor(mouseY / 25) * 25, 25, 25);
+    }
+</script>
